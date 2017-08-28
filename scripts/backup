@@ -34,7 +34,7 @@ module Backup
   def self.run!
     Backup.db(@@opts.db)
     Backup.app(@@opts.app)
-    #AWS.delete(@@opts.bucket, STALE)
+    Util.log AWS.delete(@@opts.bucket, STALE), :aws
   end
 
   def self.db(container)
@@ -44,7 +44,7 @@ module Backup
     Util.log "database copied to #{tmp_dir}", :redis
     tarball = Tar.deflate(tmp_dir)
     Util.log "tarball created at #{tarball}", :deflate
-    #AWS.cp(@@opts.bucket, rolling("redis.tar.gz"), tarball)
+    Util.log AWS.cp(@@opts.bucket, rolling("redis.tar.gz"), tarball), :aws
   end
 
   def self.app(container)
@@ -53,7 +53,7 @@ module Backup
     Util.log "user assets copied to #{tmp_dir}", :nodebb
     tarball = Tar.deflate(tmp_dir)
     Util.log "tarball created at #{tarball}", :deflate
-    #AWS.cp(@@opts.bucket, rolling("public.tar.gz"), tarball)
+    Util.log AWS.cp(@@opts.bucket, rolling("public.tar.gz"), tarball), :aws
   end
 
   def self.remove_stale!
