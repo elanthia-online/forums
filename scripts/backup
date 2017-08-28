@@ -56,9 +56,5 @@ module Backup
     Util.log AWS.cp(@@opts.bucket, rolling("public.tar.gz"), tarball), :aws
   end
 
-  def self.remove_stale!
-    
-  end
-
   run!
 end
