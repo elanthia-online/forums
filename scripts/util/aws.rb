@@ -4,6 +4,6 @@ module AWS
   end
 
   def self.delete(bucket, prefix)
-    `aws s3 del --recursive s3://#{bucket}/#{prefix} --dryrun`
+    `aws s3 rm --recursive s3://#{bucket}/#{prefix} --dryrun`
   end
 end

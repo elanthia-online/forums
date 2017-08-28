@@ -34,7 +34,7 @@ module Backup
   def self.run!
     Backup.db(@@opts.db)
     Backup.app(@@opts.app)
-    AWS.delete(@@opts.bucket, STALE)
+    #AWS.delete(@@opts.bucket, STALE)
   end
 
   def self.db(container)
@@ -44,16 +44,16 @@ module Backup
     Util.log "database copied to #{tmp_dir}", :redis
     tarball = Tar.deflate(tmp_dir)
     Util.log "tarball created at #{tarball}", :deflate
-    AWS.cp(@@opts.bucket, rolling("redis.tar.gz"), tarball)
+    #AWS.cp(@@opts.bucket, rolling("redis.tar.gz"), tarball)
   end
 
   def self.app(container)
     tmp_dir = Dir.mktmpdir("nodebb-")
-    Docker.cp_from(container, "/data", tmp_dir)
+    Docker.cp_from(container, "/usr/src/nodebb/public", tmp_dir)
     Util.log "user assets copied to #{tmp_dir}", :nodebb
     tarball = Tar.deflate(tmp_dir)
     Util.log "tarball created at #{tarball}", :deflate
-    AWS.cp(@@opts.bucket, rolling("public.tar.gz"), tarball)
+    #AWS.cp(@@opts.bucket, rolling("public.tar.gz"), tarball)
   end
 
   def self.remove_stale!
