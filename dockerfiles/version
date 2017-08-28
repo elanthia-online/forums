@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+export silent=false
+
+VERSION=$1
+
+docker build -t ondreian/nodebb:$VERSION -t ondreian/nodebb:latest .
+docker push ondreian/nodebb:$VERSION
+docker push ondreian/nodebb:latest

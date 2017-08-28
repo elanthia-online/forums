@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+require "tempfile"
+require_relative "./util/opts"
+require_relative "./util/util"
+require_relative "./util/docker"
+require_relative "./util/tar"
+require_relative "./util/aws"
+
+module Backup
+  @@opts = Opts.parse
+  WEEK   = 60 * 60 * 24 * 7
+  NOW    = Time.now.strftime("%Y-%m-%d")
+  STALE  = (Time.now - WEEK).strftime("%Y-%m-%d")
+
+  unless @@opts.app
+    raise Exception.new "--app=<app container> is required"
+  end
+
+  unless @@opts.db
+    raise Exception.new "--db=<redis container> is required"
+  end
+
+  unless @@opts.bucket
+    raise Exception.new "--bucket=<s3 bucket> is required"
+  end
+
+  Util.log(@@opts, :options)
+  Util.log(%{#{STALE} -> #{NOW}}, :window)
+
+  def self.rolling(asset)
+    %{#{NOW}/#{asset}}
+  end
+
+  def self.run!
+    Backup.db(@@opts.db)
+    Backup.app(@@opts.app)
+    AWS.delete(@@opts.bucket, STALE)
+  end
+
+  def self.db(container)
+    tmp_dir = Dir.mktmpdir("redis-")
+    Util.log Docker.exec(container, "redis-cli save"), :redis
+    Docker.cp_from(container, "/data", tmp_dir)
+    Util.log "database copied to #{tmp_dir}", :redis
+    tarball = Tar.deflate(tmp_dir)
+    Util.log "tarball created at #{tarball}", :deflate
+    AWS.cp(@@opts.bucket, rolling("redis.tar.gz"), tarball)
+  end
+
+  def self.app(container)
+    tmp_dir = Dir.mktmpdir("nodebb-")
+    Docker.cp_from(container, "/data", tmp_dir)
+    Util.log "user assets copied to #{tmp_dir}", :nodebb
+    tarball = Tar.deflate(tmp_dir)
+    Util.log "tarball created at #{tarball}", :deflate
+    AWS.cp(@@opts.bucket, rolling("public.tar.gz"), tarball)
+  end
+
+  def self.remove_stale!
+    
+  end
+
+  run!
+end

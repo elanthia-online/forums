@@ -1,0 +1,21 @@
+version: '3'
+services:
+ nodebb:
+  image: ondreian/nodebb
+  ports:
+    - "4567:4567"
+  links:
+    - redis
+  volumes:
+    - ./app:/var/lib/nodebb
+    - /usr/src/nodebb/build
+  restart: always
+  depends_on:
+    - redis
+
+ redis:
+  image: redis:latest
+  command: redis-server --appendonly yes
+  volumes:
+    - ./data:/data
+  restart: always
