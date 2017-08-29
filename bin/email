@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+require "json"
+require_relative "./util/opts"
+require_relative "./util/util"
+require_relative "./util/mailgun"
+
+module Mailer
+  @@opts = Opts.parse
+  raise Exception.new("--to=<email> is required")       unless @@opts.to
+  raise Exception.new("--subject=<string> is required") unless @@opts.subject
+  raise Exception.new("--message=<string> is required") unless @@opts.message
+
+  Util.log @@opts, :opts
+
+  def self.run!
+    resp = JSON.parse Mailgun.send(@@opts.to, @@opts.subject, @@opts.message)
+    Util.log resp["message"], :mailgun
+  end
+
+  run!
+end
