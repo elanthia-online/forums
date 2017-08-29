@@ -64,7 +64,6 @@ module Deploy
     unless File.exist?(incoming_hooks)
       Util.log("skipping git-hooks", :hooks)
     else
-      Util.log("updating git-hooks", :hooks)
       hooks_contents = File.join(incoming_hooks, "/.")
       FileUtils.cp_r(hooks_contents, Dir.getwd)
       Util.log("updated git-hooks", :hooks)
