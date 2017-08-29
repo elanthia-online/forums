@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# post-receive
+require "fileutils"
+require "tempfile"
+
+$0 = "git.postreceive"
+
+class Tries
+  def initialize(tries)
+    possibilities = tries.clone
+    begin
+      yield possibilities.shift
+    rescue Exception => e
+      puts e.message
+      if possibilities.empty?
+        raise Exception.new "all tries exhausted #{tries}"
+      else 
+        retry
+      end
+    end
+  end
+end
+
+module Deploy
+  # put the files someplace we can cleanup
+  SWAP = Dir.mktmpdir("deploy-")
+  # Read STDIN (Format: "from_commit to_commit branch_name")
+  FROM, TO, BRANCH = ARGF.read.split " "
+  `GIT_WORK_TREE="#{SWAP}" git checkout -f master`
+
+  puts %{
+    branch: #{BRANCH}
+      from: #{FROM}
+        to: #{TO}
+       cwd: #{Dir.getwd}
+  }
+
+  def self.ensure_master!
+    raise Exception.new "can only deploy from master branch" unless BRANCH =~ /master$/
+  end
+
+  def self.git_require(file)
+    Tries.new(["bin", "scripts"]) do |resource|
+      git_resource = File.join(SWAP, resource, file)
+      puts "[git.require] trying #{git_resource}"
+      require git_resource
+    end
+  end
+
+  def self.cp_bin!
+    usr_bin = File.join(Dir.home, "bin")
+    stale_bin = File.join(usr_bin, "/.")
+    Util.log("cleaning #{stale_bin}", :bin)
+    FileUtils.rm_rf stale_bin
+    Tries.new(["bin", "scripts"]) do |resource|
+      git_bin_contents = File.join(SWAP, resource, "/.")
+      FileUtils.cp_r(git_bin_contents, usr_bin)
+      Util.log("updated #{git_bin_contents} -> #{usr_bin}", :bin)
+    end
+  end
+
+  def self.cp_git_hooks!
+    incoming_hooks = File.join(SWAP, "git-hooks")
+    unless File.exist?(incoming_hooks)
+      Util.log("skipping git-hooks", :hooks)
+    else
+      Util.log("updating git-hooks", :hooks)
+      hook_contents = File.join(incoming_hooks, "/.")
+      FileUtils.cp_r(hooks_contents, Dir.getwd)
+      Util.log("updated git-hooks", :hooks)
+    end
+  end
+
+  ensure_master!
+
+  git_require("util/util.rb")
+
+  cp_bin!
+
+  cp_git_hooks!
+end
