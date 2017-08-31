@@ -1,0 +1,18 @@
+##
+## this script lives in /etc/ssh/sshrc
+##
+## it runs everytime a new ssh session is established
+##
+ip=`echo $SSH_CONNECTION | cut -d " " -f 1`
+##
+## use normal logging as well
+##
+logger -t ssh-wrapper $USER login from $ip
+##
+## tell the admin group that a user logged in and from what ip
+##
+/home/ondreian/bin/email \
+  --to=$GROUP_EMAIL \
+  --subject="[ssh.login] $USER@$ip" \
+  --message="User $USER just logged in from $ip" \
+  > /tmp/email.log 2>&1
