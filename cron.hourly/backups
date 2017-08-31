@@ -1,0 +1,56 @@
+#!/bin/bash
+# turn on errors
+set -e
+##
+## we need a logfile to write too
+##
+LOG_FILE=/tmp/backup.log 
+##
+## installs a package via apt if it doesn't exist
+## on the local machine already
+##
+install_package () {
+  ## query local packges
+  ## returns 0 if doesn't exist, 1 otherwise
+  local exists=$(dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -c "ok installed")
+  if [ $exists -eq 0 ];
+  then
+    echo "installing pkg: $1"
+    apt-get install $1;
+  fi
+}
+##
+## sends the local backups to an S3 bucket
+##
+## TODO: 
+##  1. refactor this this be more adaptive, backuping up all `prod_` containers
+##
+backup_to_aws () {
+  /home/ondreian/bin/backup \
+    --app=prod_nodebb_1 \
+    --db=prod_redis_1 \
+    --bucket=$S3_BUCKET \
+    > $LOG_FILE 2>&1
+  ##
+  ## clean up local tmp files
+  ##
+  rm -rf /tmp/redis*
+  rm -rf /tmp/nodebb*
+}
+##
+## lets the admin group know a successul backup happened
+##
+email_result () {
+  local result="$(cat $LOG_FILE)"
+  /home/ondreian/bin/email \
+  --to=$GROUP_EMAIL \
+  --subject="[cron.backup] result" \
+  --message="$result" \
+  > /tmp/email.log 2>&1
+}
+##
+## run the backups
+##
+install_package "awscli"
+backup_to_aws
+email_result
